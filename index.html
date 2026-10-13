@@ -163,12 +163,12 @@ const $=id=>document.getElementById(id);
 const JSZIP='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
 const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFW='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-const L={en:{n:'Inglês',tl:'en'},es:{n:'Espanhol',tl:'es'},zh:{n:'Chinês',tl:'zh-CN'}};
+const L={pt:{n:'Português',tl:'pt'},en:{n:'Inglês',tl:'en'},es:{n:'Espanhol',tl:'es'},zh:{n:'Chinês',tl:'zh-CN'}};
 const SPEED={fast:{c:10,bs:6000},mid:{c:6,bs:4500},safe:{c:3,bs:3000}};
 const ENC=6500, SEP=' ⟦S⟧ ', SEPRE=/\s*⟦\s*S\s*⟧\s*/;
 const MIME={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'};
 const BLOCK='p,li,h1,h2,h3,h4,h5,h6,blockquote,figcaption,dt,dd,td,th';
-const S={book:null,imgs:[],busy:false,ctrl:null,src:'en',dst:'es',auto:[],used:[],pair:'',pid:0,fname:'',failed:0};
+const S={book:null,imgs:[],busy:false,ctrl:null,src:'en',dst:'pt',auto:[],used:[],pair:'',pid:0,fname:'',failed:0};
 
 const clean=s=>s.replace(/\s+/g,' ').trim();
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -192,11 +192,12 @@ const speedName=()=>({fast:'Rápida',mid:'Equilibrada',safe:'Segura'})[(document
 
 /* ---------- Idioma automático ---------- */
 const EN=new Set('the and of to was with that his her you for had not but they said this from have were are which'.split(' '));
+const PT=new Set('não é uma os as do da dos das em ele ela mas foi você está são também já seu sua com um para que'.split(' ').filter(w=>!['com','um','para','que'].includes(w)));
 const ES=new Set('el la los las y de que en un una con por para del se su al lo como más pero sus le ya fue este'.split(' '));
 function detectLang(t){
   const cjk=(t.match(/[\u4e00-\u9fff]/g)||[]).length;if(cjk>t.length*.1)return 'zh';
-  let en=0,es=0;for(const w of t.toLowerCase().match(/\p{L}+/gu)||[]){if(EN.has(w))en++;if(ES.has(w))es++}
-  return es>en?'es':'en';
+  let en=0,es=0,pt=0;for(const w of t.toLowerCase().match(/\p{L}+/gu)||[]){if(EN.has(w))en++;if(ES.has(w))es++;if(PT.has(w))pt++}
+  return pt>es&&pt>en?'pt':es>en?'es':'en';
 }
 
 /* ---------- Nomes próprios ---------- */
@@ -205,7 +206,9 @@ const STOP=new Set(('the and but for with from that this then when where what wh
  'monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december god '+
  'los las una uno pero cuando donde cómo por para del con ella ellos ellas este esta esto capítulo parte libro prólogo epílogo '+
  'rey reina príncipe princesa señor señora señorita capitán doctor doctora profesor profesora padre madre tío tía hermano hermana santo juez presidente ministro alcalde oficial inspector detective coronel mayor teniente comandante almirante duque duquesa conde barón emperador emperatriz '+
- 'lunes martes miércoles jueves viernes sábado domingo enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre dios').split(' '));
+ 'lunes martes miércoles jueves viernes sábado domingo enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre dios '+
+ 'rei rainha príncipe princesa senhor senhora capitão doutor doutora professor professora padre mãe tio tia irmão irmã santo juiz presidente ministro prefeito coronel major tenente comandante almirante duque duquesa conde barão imperador imperatriz '+
+ 'segunda terça quarta quinta sexta sábado domingo janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro deus').split(' '));
 function autoNames(chs){
   const cap=new Map(),low=new Map();
   for(const ch of chs)for(const it of ch.items){
