@@ -44,7 +44,6 @@ h3{color:var(--ink);font-weight:700;margin:0 0 2px;font-size:15px}
 .chip input:checked+span::before{border-color:var(--b);background:var(--b);box-shadow:inset 0 0 0 3px var(--bs)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 textarea{width:100%;min-height:80px;padding:12px 14px;border:1px solid var(--bd);border-radius:16px;background:var(--card);color:var(--ink);font-size:14px;resize:vertical;line-height:1.5}
-.txt{width:100%;height:46px;padding:0 16px;border:1px solid var(--bd);border-radius:999px;background:var(--card);color:var(--ink);font-size:14px}
 .hint{font-size:12px;color:var(--mu);margin:6px 0 0}
 .row{display:flex;gap:12px;margin-top:24px}
 .row .btn-p{flex:1.2}.row .btn{flex:1}
@@ -121,8 +120,6 @@ select{flex:1;min-width:0;height:44px;padding:0 14px;border:0;border-radius:999p
       <button class="btn" id="clr" disabled><svg class="i"><use href="#x"/></svg>Limpar</button>
     </div>
     <div class="status" id="status" aria-live="polite"></div>
-    <button class="btn" id="test" style="margin-top:14px">Testar conexão com o tradutor</button>
-    <p class="hint">Versão 5. Se o teste falhar, o bloqueio vem do ambiente onde a página está aberta, não do livro.</p>
   </div>
 </section>
 
@@ -403,24 +400,14 @@ function split(t){
   }
   push();return out;
 }
-/* ---------- Motores de tradução (tenta em ordem; usa o primeiro que responde) ---------- */
-const ENG={dead:{},bad:{},why:{},tr:{}};
-const ORDER=['chrome','google'];
-const NAMES={chrome:'Tradutor do Chrome',google:'Google Tradutor',proxy:'Seu intermediário',lingva:'Lingva'};
-const LINGVA=['https://lingva.ml','https://lingva.garudalinux.org','https://translate.plausibility.cloud','https://lingva.lunar.icu'];
-const zc=c=>c==='zh-CN'?'zh':c;
-const SAMPLE={en:'The king walked home with his sister.',es:'El rey caminó a casa con su hermana.',pt:'O rei caminhou para casa com a irmã.','zh-CN':'国王和他的妹妹走回了家。'};
-const proxyUrl=()=>($('proxy').value||'').trim().replace(/\/+$/,'');
-const fail=(m,f)=>{const e=new Error(m);if(f)e[f]=1;return e};
-async function viaGoogle(text,sl,tl,sig,onRate,wrap){
-  const base=`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tl==='pt'?'pt-BR':tl}&dt=t`;
-  const q=encodeURIComponent(text);let post=!wrap&&q.length>1500,err;
-  for(let a=0;a<4;a++){
+async function raw(text,sl,tl,sig,onRate){
+  const base=`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t`;
+  const q=encodeURIComponent(text);let post=q.length>1500,err;
+  for(let a=0;a<5;a++){
     try{
-      const u=base+'&q='+q;
       const r=post
         ?await fetch(base,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'q='+q,signal:sig})
-        :await fetch(wrap?wrap(u):u,{signal:sig});
+        :await fetch(base+'&q='+q,{signal:sig});
       if(!r.ok){const e=new Error('HTTP '+r.status);e.status=r.status;throw e}
       const d=await r.json();
       if(!d||!Array.isArray(d[0]))throw new Error('resposta inesperada');
@@ -429,66 +416,12 @@ async function viaGoogle(text,sl,tl,sig,onRate,wrap){
       if(e.name==='AbortError')throw e;
       err=e;
       if(e.status===429)onRate();
-      else if(post&&q.length<=6000){post=false;continue}
-      else if(e.status>=400&&e.status<500&&e.status!==408)break;
-      if(!e.status&&a>=1)break;                 /* erro de rede/CORS: não adianta insistir */
-      if(a<3)await sleep((e.status===429?2000:400)*2**a+Math.random()*300,sig);
+      else if(post&&q.length<=6000){post=false;continue}   /* POST falhou: tenta GET */
+      else if([400,413,414].includes(e.status))break;       /* grande demais: quem chamou divide */
+      if(a<4)await sleep((e.status===429?2000:400)*2**a+Math.random()*300,sig);
     }
   }
   throw err;
-}
-const run={
-  chrome:async(t,sl,tl)=>{
-    if(!('Translator' in self))throw fail('indisponível neste navegador','fatal');
-    const a=zc(sl),b=zc(tl),k=a+b;
-    if(!ENG.tr[k]){
-      if(await Translator.availability({sourceLanguage:a,targetLanguage:b})==='unavailable')throw fail('idiomas não suportados','fatal');
-      ENG.tr[k]=await Translator.create({sourceLanguage:a,targetLanguage:b});
-    }
-    return ENG.tr[k].translate(t);
-  },
-  google:(t,sl,tl,sig,o)=>viaGoogle(t,sl,tl,sig,o),
-  proxy:(t,sl,tl,sig,o)=>{const px=proxyUrl();if(!px)throw fail('não configurado','fatal');return viaGoogle(t,sl,tl,sig,o,u=>px+(px.includes('?')?'&':'?')+'url='+encodeURIComponent(u))},
-  lingva:async(t,sl,tl,sig)=>{
-    if(encodeURIComponent(t).length>1800){const e=new Error('trecho grande demais');e.soft=1;throw e}
-    let err;
-    for(const b of LINGVA){
-      try{
-        const r=await fetch(`${b}/api/v1/${zc(sl)}/${zc(tl)}/${encodeURIComponent(t)}`,{signal:sig});
-        if(!r.ok)throw new Error('HTTP '+r.status);
-        const d=await r.json();if(!d.translation)throw new Error('resposta vazia');
-        return d.translation;
-      }catch(e){if(e.name==='AbortError')throw e;err=e}
-    }
-    throw err;
-  }
-};
-async function raw(text,sl,tl,sig,onRate){
-  let err;
-  for(const e of ORDER){
-    if(ENG.dead[e])continue;
-    try{const o=await run[e](text,sl,tl,sig,onRate);ENG.bad[e]=0;return o}
-    catch(x){
-      if(x.name==='AbortError')throw x;
-      err=x;
-      if(x.fatal)ENG.dead[e]=1;
-      else if(!x.soft&&x.status!==429){ENG.bad[e]=(ENG.bad[e]||0)+1;if(ENG.bad[e]>=4)ENG.dead[e]=1}
-    }
-  }
-  throw err||new Error('nenhum tradutor disponível');
-}
-/* Testa cada motor com uma frase curta e marca os que não respondem. */
-async function probe(sl,tl,sig){
-  ENG.dead={};ENG.bad={};ENG.why={};const ok=[];
-  for(const e of ORDER){
-    try{
-      const o=await run[e](SAMPLE[sl]||SAMPLE.en,sl,tl,sig,()=>{});
-      if(o&&o.trim()){ok.push(e);continue}
-      ENG.why[e]='resposta vazia';
-    }catch(x){if(x.name==='AbortError')throw x;ENG.why[e]=x.status?'HTTP '+x.status:x.message}
-    ENG.dead[e]=1;
-  }
-  return ok;
 }
 /* Envia vários trechos seguidos (mantém contexto e gênero) separados por um marcador.
    Qualquer falha → divide o bloco ao meio; trecho único que falha → tenta sem proteção de nomes. */
@@ -528,9 +461,13 @@ $('go').onclick=async()=>{
   $('bar').style.width='0%';$('eta').textContent='Você pode cancelar quando quiser.';show('prog');
   let wake=null;try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}catch(e){}
   try{
-    const alive=await probe(sl,tl,sig);
-    if(!alive.length)throw new Error('nenhum tradutor respondeu ('+Object.entries(ENG.why).filter(([k])=>k!=='proxy'||proxyUrl()).map(([k,v])=>NAMES[k]+': '+v).join('; ')+').');
-    S.engName=alive.map(x=>NAMES[x]).join(' → ');S.cap=alive.some(x=>x!=='lingva')?ENC:1700;
+    try{
+      const probe=await raw('Hello, how are you?',sl==='zh-CN'?'en':sl,tl,sig,()=>{});
+      if(!probe||!probe.trim())throw new Error('resposta vazia');
+    }catch(e){
+      if(e.name==='AbortError')throw e;
+      throw new Error(/HTTP/.test(e.message)?`o Google Tradutor recusou a requisição (${e.message}). Tente de novo em alguns minutos ou use a velocidade Segura.`:'não foi possível acessar o Google Tradutor. Verifique a internet, desative bloqueadores de anúncios e abra o arquivo direto no navegador (ou na página do GitHub), não dentro de uma pré-visualização, que bloqueia conexões externas.');
+    }
     const units=[];
     for(const ch of S.book.chapters)for(const it of ch.items){
       if(it.k==='img'||it.tr!=null)continue;
@@ -541,7 +478,7 @@ $('go').onclick=async()=>{
     const blocks=[];let cur=[],len=0,enc=0,total=0;
     for(const u of units){
       const e=encodeURIComponent(u.t).length+40;total+=u.t.length;
-      if(cur.length&&(len+u.t.length>sp.bs||enc+e>S.cap)){blocks.push(cur);cur=[];len=0;enc=0}
+      if(cur.length&&(len+u.t.length>sp.bs||enc+e>ENC)){blocks.push(cur);cur=[];len=0;enc=0}
       cur.push(u);len+=u.t.length;enc+=e;
     }
     if(cur.length)blocks.push(cur);
@@ -602,7 +539,7 @@ function build(){
   const step=()=>{if(tok!==R.tok||R.n>=chs.length)return;more(4);setTimeout(step,40)};setTimeout(step,80);
   $('chsel').innerHTML=chs.map((c,i)=>`<option value="${i}">${i+1}. ${esc(chTitle(c,i))}</option>`).join('');
   const ni=S.book.chapters.reduce((s,c)=>s+c.items.filter(x=>x.k==='img').length,0);
-  $('info').innerHTML=[`Arquivo: ${esc(S.fname)}`,`${L[S.pairLang.sl].n} → ${L[S.pairLang.tl].n}`,`Velocidade: ${S.speed}`,`${S.used.length} nome(s) preservado(s)`,`${ni} imagem(ns) mantida(s)`,`Motor: ${S.engName||'—'}`].map(t=>`<span class="tag">${t}</span>`).join('');
+  $('info').innerHTML=[`Arquivo: ${esc(S.fname)}`,`${L[S.pairLang.sl].n} → ${L[S.pairLang.tl].n}`,`Velocidade: ${S.speed}`,`${S.used.length} nome(s) preservado(s)`,`${ni} imagem(ns) mantida(s)`].map(t=>`<span class="tag">${t}</span>`).join('');
   updatePos();
 }
 function updatePos(){
@@ -664,15 +601,7 @@ $('pdf').onclick=()=>{
   if(!window.open(url,'_blank')){URL.revokeObjectURL(url);setStatus('Permita pop-ups para gerar o PDF.','err','dstat');return}
   setStatus('Na janela que abriu, escolha "Salvar como PDF".','','dstat');setTimeout(()=>URL.revokeObjectURL(url),300000);
 };
-$('test').onclick=async()=>{
-  setStatus('Testando os tradutores...');
-  const sl=L[S.src].tl,tl=L[S.src===S.dst?'en':S.dst].tl;
-  try{
-    const ok=await probe(sl===tl?'es':sl,tl);
-    const bad=Object.entries(ENG.why).filter(([k])=>k!=='proxy'||proxyUrl()).map(([k,v])=>NAMES[k]+': '+v).join('; ');
-    setStatus(ok.length?`Funcionou com: ${ok.map(x=>NAMES[x]).join(', ')}.${bad?' Sem resposta: '+bad+'.':''}`:`Nenhum respondeu. ${bad}.`,ok.length?'ok':'err');
-  }catch(e){setStatus('Erro no teste: '+e.message,'err')}
-};
 </script>
 </body>
 </html>
+
