@@ -121,12 +121,8 @@ select{flex:1;min-width:0;height:44px;padding:0 14px;border:0;border-radius:999p
       <button class="btn" id="clr" disabled><svg class="i"><use href="#x"/></svg>Limpar</button>
     </div>
     <div class="status" id="status" aria-live="polite"></div>
-    <details class="sec"><summary style="color:var(--b);font-weight:600;cursor:pointer">Avançado: intermediário próprio (opcional)</summary>
-      <p class="sub" style="margin-top:8px">Se o teste mostrar que nenhum tradutor respondeu, cole aqui o endereço do seu intermediário no Cloudflare.</p>
-      <input class="txt" id="proxy" type="url" placeholder="https://seu-nome.workers.dev" spellcheck="false">
-    </details>
     <button class="btn" id="test" style="margin-top:14px">Testar conexão com o tradutor</button>
-    <p class="hint">Versão 4. Se o teste falhar, o bloqueio vem do ambiente onde a página está aberta, não do livro.</p>
+    <p class="hint">Versão 5. Se o teste falhar, o bloqueio vem do ambiente onde a página está aberta, não do livro.</p>
   </div>
 </section>
 
@@ -409,7 +405,7 @@ function split(t){
 }
 /* ---------- Motores de tradução (tenta em ordem; usa o primeiro que responde) ---------- */
 const ENG={dead:{},bad:{},why:{},tr:{}};
-const ORDER=['chrome','google','proxy','lingva'];
+const ORDER=['chrome','google'];
 const NAMES={chrome:'Tradutor do Chrome',google:'Google Tradutor',proxy:'Seu intermediário',lingva:'Lingva'};
 const LINGVA=['https://lingva.ml','https://lingva.garudalinux.org','https://translate.plausibility.cloud','https://lingva.lunar.icu'];
 const zc=c=>c==='zh-CN'?'zh':c;
@@ -417,7 +413,7 @@ const SAMPLE={en:'The king walked home with his sister.',es:'El rey caminó a ca
 const proxyUrl=()=>($('proxy').value||'').trim().replace(/\/+$/,'');
 const fail=(m,f)=>{const e=new Error(m);if(f)e[f]=1;return e};
 async function viaGoogle(text,sl,tl,sig,onRate,wrap){
-  const base=`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t`;
+  const base=`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tl==='pt'?'pt-BR':tl}&dt=t`;
   const q=encodeURIComponent(text);let post=!wrap&&q.length>1500,err;
   for(let a=0;a<4;a++){
     try{
@@ -533,7 +529,7 @@ $('go').onclick=async()=>{
   let wake=null;try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}catch(e){}
   try{
     const alive=await probe(sl,tl,sig);
-    if(!alive.length)throw new Error('nenhum tradutor respondeu ('+Object.entries(ENG.why).filter(([k])=>k!=='proxy'||proxyUrl()).map(([k,v])=>NAMES[k]+': '+v).join('; ')+'). Veja "Avançado" na tela inicial.');
+    if(!alive.length)throw new Error('nenhum tradutor respondeu ('+Object.entries(ENG.why).filter(([k])=>k!=='proxy'||proxyUrl()).map(([k,v])=>NAMES[k]+': '+v).join('; ')+').');
     S.engName=alive.map(x=>NAMES[x]).join(' → ');S.cap=alive.some(x=>x!=='lingva')?ENC:1700;
     const units=[];
     for(const ch of S.book.chapters)for(const it of ch.items){
@@ -677,8 +673,6 @@ $('test').onclick=async()=>{
     setStatus(ok.length?`Funcionou com: ${ok.map(x=>NAMES[x]).join(', ')}.${bad?' Sem resposta: '+bad+'.':''}`:`Nenhum respondeu. ${bad}.`,ok.length?'ok':'err');
   }catch(e){setStatus('Erro no teste: '+e.message,'err')}
 };
-try{$('proxy').value=localStorage.getItem('tl_proxy')||''}catch(e){}
-$('proxy').oninput=()=>{try{localStorage.setItem('tl_proxy',$('proxy').value)}catch(e){}};
 </script>
 </body>
 </html>
