@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0090ff">
+<link rel="icon" href="data:,">
 <title>Tradutor de livros</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,14 +32,14 @@ h3{color:var(--ink);font-weight:700;margin:0 0 2px;font-size:15px}
 .btn-p{background:var(--b);color:#fff;font-weight:700}
 .btn-p:hover:not(:disabled){background:var(--bh)}
 .btn:focus-visible,.drop:focus-visible,select:focus-visible,textarea:focus-visible,.chip input:focus-visible+span{outline:3px solid var(--b);outline-offset:2px}
-/* Área de envio: um toque chama o seletor de arquivos por código (funciona no celular).
-   O input real fica "visualmente escondido" (não display:none) para todos os navegadores aceitarem. */
+/* Área de envio: é um <label> ligado ao <input type=file>. O próprio navegador abre o
+   gerenciador de arquivos ao tocar (Android, iOS e computador), sem depender de JavaScript. */
 .drop{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:28px 14px;border:1.5px dashed var(--mu);border-radius:20px;cursor:pointer;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .drop:hover,.drop.drag,.drop.has{border-color:var(--b);background:var(--bs)}
 .drop .i{width:38px;height:38px;color:var(--b);margin-bottom:6px}
 .drop strong{color:var(--ink);font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drop span{font-size:12.5px;color:var(--mu)}
-.pick{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none;margin:0;padding:0;border:0}
+.pick{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);margin:0;padding:0;border:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{position:relative}
 .chip input{position:absolute;opacity:0;pointer-events:none}
@@ -92,11 +94,11 @@ select{flex:1;min-width:0;height:44px;padding:0 14px;border:0;border-radius:999p
 <section id="v-home">
   <div class="card">
     <h3>1. Envie seu livro</h3><p class="sub">Arquivos .epub ou .pdf. As imagens ficam na mesma posição.</p>
-    <div class="drop" id="drop" role="button" tabindex="0" aria-label="Escolher arquivo EPUB ou PDF">
+    <label class="drop" id="drop" for="file" tabindex="0" role="button" aria-label="Escolher arquivo EPUB ou PDF">
       <svg class="i" id="dropIcon"><use href="#up"/></svg>
       <strong id="dropT">Toque para escolher o arquivo</strong><span id="dropS">EPUB ou PDF · no computador, você também pode arrastar</span>
-      <input type="file" id="file" class="pick" tabindex="-1" aria-hidden="true">
-    </div>
+      <input type="file" id="file" class="pick" tabindex="-1">
+    </label>
 
     <div class="two sec">
       <div><h3>2. Idioma do livro</h3><p class="sub">Detectado ao abrir o arquivo</p><div class="chips" id="gSrc"></div></div>
@@ -164,14 +166,18 @@ const $=id=>document.getElementById(id);
 const JSZIP='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
 const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFW='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-const L={pt:{n:'Português',tl:'pt'},en:{n:'Inglês',tl:'en'},es:{n:'Espanhol',tl:'es'},zh:{n:'Chinês',tl:'zh-CN'}};
+const L={
+  pt:{n:'Português',tl:'pt'},en:{n:'Inglês',tl:'en'},es:{n:'Espanhol',tl:'es'},fr:{n:'Francês',tl:'fr'},
+  de:{n:'Alemão',tl:'de'},it:{n:'Italiano',tl:'it'},zh:{n:'Chinês',tl:'zh-CN'},ja:{n:'Japonês',tl:'ja'}
+};
+const CJK=new Set(['zh','ja']);
+const CJKRE=/[\u3040-\u30ff\u4e00-\u9fff]/;
 /* c = requisições simultâneas, bs = caracteres por requisição, pace = pausa (ms) entre requisições de cada "trabalhador" */
-const SPEED={fast:{c:6,bs:1500,pace:80},mid:{c:4,bs:1200,pace:200},safe:{c:2,bs:900,pace:600}};
-const ENC=1500;      /* limite (já codificado para URL) de cada requisição: pedidos pequenos e estáveis */
+const SPEED={fast:{c:5,bs:1500,pace:100},mid:{c:3,bs:1200,pace:250},safe:{c:2,bs:900,pace:700}};
 const MAXSTALL=8;    /* rodadas seguidas sem nenhum progresso antes de pausar e pedir "Continuar" */
 const MIME={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'};
 const BLOCK='p,li,h1,h2,h3,h4,h5,h6,blockquote,figcaption,dt,dd,td,th';
-const S={book:null,imgs:[],busy:false,ctrl:null,src:'en',dst:'pt',auto:[],used:[],pair:'',pid:0,fname:'',lastErr:''};
+const S={book:null,imgs:[],busy:false,ctrl:null,src:'en',dst:'pt',auto:[],used:[],pair:'',pid:0,fname:'',lastErr:'',lim:1000,enc:1500,keptN:0};
 
 const clean=s=>s.replace(/\s+/g,' ').trim();
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -196,14 +202,23 @@ const speed=()=>SPEED[(document.querySelector('input[name=sp]:checked')||{}).val
 const speedName=()=>({fast:'Rápida',mid:'Equilibrada',safe:'Segura'})[(document.querySelector('input[name=sp]:checked')||{}).value||'mid'];
 
 /* ---------- Idioma automático ---------- */
-const EN=new Set('the and of to was with that his her you for had not but they said this from have were are which'.split(' '));
-const PT=new Set('não é uma os as do da dos das em ele ela mas foi você está são também já seu sua com um para que'.split(' ').filter(w=>!['com','um','para','que'].includes(w)));
-const ES=new Set('el la los las y de que en un una con por para del se su al lo como más pero sus le ya fue este'.split(' '));
-const SETS={en:EN,pt:PT,es:ES};
+const W=s=>new Set(s.split(' '));
+const SETS={
+  en:W('the and was with that his her you had not but they said this from have were which she he been would there their what'),
+  pt:W('não uma os as do da dos das ele ela mas foi você está são também já seu sua mais pelo pela muito então quando'),
+  es:W('el los las y del con pero sus fue este esta están también cuando muy más ya'),
+  fr:W('le les des est une et qui dans pas sur avec elle vous nous mais ce aux était sont pour très'),
+  de:W('der die das und ist nicht ein eine mit den dem von auf für sich auch war ich sie es zu'),
+  it:W('il gli che di per non è sono ma come più anche suo sua del della nel')
+};
 function detectLang(t){
-  const cjk=(t.match(/[\u4e00-\u9fff]/g)||[]).length;if(cjk>t.length*.1)return 'zh';
-  let en=0,es=0,pt=0;for(const w of t.toLowerCase().match(/\p{L}+/gu)||[]){if(EN.has(w))en++;if(ES.has(w))es++;if(PT.has(w))pt++}
-  return pt>es&&pt>en?'pt':es>en?'es':'en';
+  const kana=(t.match(/[\u3040-\u30ff]/g)||[]).length,han=(t.match(/[\u4e00-\u9fff]/g)||[]).length;
+  if(kana>t.length*.03)return 'ja';
+  if(han>t.length*.1)return 'zh';
+  const sc={};for(const k in SETS)sc[k]=0;
+  for(const w of t.toLowerCase().match(/\p{L}+/gu)||[])for(const k in SETS)if(SETS[k].has(w))sc[k]++;
+  let best='en',n=0;for(const k in sc)if(sc[k]>n){n=sc[k];best=k}
+  return best;
 }
 
 /* ---------- Nomes próprios ---------- */
@@ -214,7 +229,8 @@ const STOP=new Set(('the and but for with from that this then when where what wh
  'rey reina príncipe princesa señor señora señorita capitán doctor doctora profesor profesora padre madre tío tía hermano hermana santo juez presidente ministro alcalde oficial inspector detective coronel mayor teniente comandante almirante duque duquesa conde barón emperador emperatriz '+
  'lunes martes miércoles jueves viernes sábado domingo enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre dios '+
  'rei rainha príncipe princesa senhor senhora capitão doutor doutora professor professora padre mãe tio tia irmão irmã santo juiz presidente ministro prefeito coronel major tenente comandante almirante duque duquesa conde barão imperador imperatriz '+
- 'segunda terça quarta quinta sexta sábado domingo janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro deus').split(' '));
+ 'segunda terça quarta quinta sexta sábado domingo janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro deus '+
+ 'monsieur madame mademoiselle docteur roi reine chapitre partie livre dieu lundi mardi mercredi jeudi vendredi samedi dimanche').split(' '));
 function autoNames(chs){
   const cap=new Map(),low=new Map();
   for(const ch of chs)for(const it of ch.items){
@@ -223,7 +239,7 @@ function autoNames(chs){
     for(const w of it.t.match(/[\p{L}'’-]+|[.!?…:]+/gu)||[]){
       if(/^[.!?…:]+$/.test(w)){st=true;continue}
       const k=w.replace(/^['’-]+|['’-]+$/g,'').replace(/['’]s$/i,'');
-      if(k.length<3||/[\u4e00-\u9fff]/.test(k)){st=false;continue}
+      if(k.length<3||CJKRE.test(k)){st=false;continue}
       const lw=k.toLowerCase();
       if(/^\p{Lu}/u.test(k)){if(!st&&!STOP.has(lw)&&k!==k.toUpperCase())cap.set(k,(cap.get(k)||0)+1)}
       else low.set(lw,(low.get(lw)||0)+1);
@@ -245,11 +261,9 @@ function guard(names){
 
 /* ---------- Arquivo ---------- */
 const drop=$('drop'),fileEl=$('file');
-/* O toque na área chama o seletor POR CÓDIGO, dentro do gesto do usuário (funciona em Android e iOS). */
-function openPicker(){try{fileEl.click()}catch(e){setStatus('Não foi possível abrir o seletor de arquivos neste navegador. Abra esta página direto no navegador (fora de pré-visualizações).','err')}}
-drop.addEventListener('click',e=>{if(e.target===fileEl)return;if(!S.busy)openPicker()});
-drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();if(!S.busy)openPicker()}});
-fileEl.addEventListener('click',e=>e.stopPropagation());
+/* O toque na área é tratado pelo próprio <label>: o navegador abre o gerenciador de arquivos sozinho.
+   Aqui só tratamos o teclado (Enter/Espaço) e o arrastar-e-soltar do computador. */
+drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fileEl.click()}});
 /* Copia o arquivo para a memória ANTES de limpar o campo: no Android o arquivo escolhido pode ficar ilegível depois. */
 fileEl.addEventListener('change',async()=>{
   const f=fileEl.files&&fileEl.files[0];if(!f)return;
@@ -286,7 +300,7 @@ async function setFile(f){
     S.book=book;
     const sample=book.chapters.slice(0,6).flatMap(c=>c.items.filter(x=>x.k==='p').map(x=>x.t)).join(' ').slice(0,20000);
     S.src=detectLang(sample);if(S.dst===S.src)S.dst=Object.keys(L).find(k=>k!==S.src);sync();
-    S.auto=S.src==='zh'?[]:autoNames(book.chapters);
+    S.auto=(CJK.has(S.src)||S.src==='de')?[]:autoNames(book.chapters);
     const ni=S.imgs.length;
     setDrop('file',S.fname,`${fmt(f.size)} · ${book.chapters.length} seções · ${np.toLocaleString('pt-BR')} parágrafos${ni?' · '+ni+' imagens':''}`,true);
     $('nameHint').textContent=S.auto.length?`${S.auto.length} nome(s) recorrente(s) detectado(s) e protegido(s) automaticamente.`:'Nenhum nome recorrente detectado. Você pode listar os nomes acima.';
@@ -417,21 +431,26 @@ async function readPdf(f,id){
 }
 
 /* =====================================================================
-   MOTOR DE TRADUÇÃO (reestruturado)
-   - pedidos pequenos (GET), com vários serviços que se revezam
-   - cada serviço tem pausa própria quando limita (429) e volta sozinho
-   - a velocidade se ajusta sozinha (reduz ao limitar, sobe ao se recuperar)
-   - cada trecho traduzido é VERIFICADO: se vier igual ao original ou ainda no
-     idioma de origem, é refeito; nada sem tradução chega à tela
-   - o progresso fica guardado: cancelar/falhar e "Continuar" retoma de onde parou
+   MOTOR DE TRADUÇÃO (v3)
+   1) No início, TESTA cada serviço com uma frase real. Só os que responderem
+      de verdade (e traduzirem de fato) entram na lista de uso.
+   2) A origem é sempre "auto" (o próprio serviço detecta o idioma de cada trecho),
+      então um livro com idioma mal detectado continua sendo traduzido.
+   3) Cada serviço tem pausa própria quando limita (429) e volta sozinho;
+      serviços bloqueados/fora do ar são descartados na hora.
+   4) Cada trecho é VERIFICADO. Se vier igual ao original ou ainda no idioma de
+      origem, é refeito em OUTRO serviço. Nada sem tradução é mostrado.
+   5) Se o livro inteiro volta sem tradução, o processo para com uma explicação
+      (em vez de mostrar o texto original).
+   6) O progresso é guardado: cancelar/falhar e "Continuar" retoma de onde parou.
    ===================================================================== */
 async function fetchJ(url,opt,sig){
   const c=new AbortController();let to=false;
   const tm=setTimeout(()=>{to=true;c.abort()},25000),on=()=>c.abort();
   if(sig.aborted)c.abort();else sig.addEventListener('abort',on,{once:true});
   try{
-    const r=await fetch(url,Object.assign({},opt,{signal:c.signal}));
-    if(!r.ok){const e=new Error('HTTP '+r.status);e.status=r.status;e.big=r.status===413||r.status===414;throw e}
+    const r=await fetch(url,Object.assign({referrerPolicy:'no-referrer',credentials:'omit'},opt,{signal:c.signal}));
+    if(!r.ok){const e=new Error('HTTP '+r.status);e.status=r.status;throw e}
     return await r.json();
   }catch(e){
     if(to&&!sig.aborted)throw new Error('tempo esgotado');
@@ -439,19 +458,23 @@ async function fetchJ(url,opt,sig){
   }finally{clearTimeout(tm);sig.removeEventListener('abort',on)}
 }
 const lc=x=>x==='zh-CN'?'zh':x;
-/* Google (gtx): devolve segmentos [traduzido, original] */
-async function gtx(host,text,sl,tl,sig){
-  const d=await fetchJ(`https://${host}/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&ie=UTF-8&oe=UTF-8&q=${encodeURIComponent(text)}`,{},sig);
+function parseGtx(d){
   if(!d||!Array.isArray(d[0]))throw new Error('resposta inesperada');
-  const segs=d[0].filter(s=>s&&typeof s[0]==='string').map(s=>[s[0],typeof s[1]==='string'?s[1]:'']);
+  const segs=d[0].filter(s=>Array.isArray(s)&&typeof s[0]==='string').map(s=>[s[0],typeof s[1]==='string'?s[1]:'']);
   if(!segs.length)throw new Error('resposta vazia');
   return{segs};
 }
+const gtxUrl=(host,text,sl,tl)=>`https://${host}/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&ie=UTF-8&oe=UTF-8&q=${encodeURIComponent(text)}`;
+const gtx=host=>async(text,sl,tl,sig)=>parseGtx(await fetchJ(gtxUrl(host,text,sl,tl),{},sig));
 async function clients5(text,sl,tl,sig){
   const d=await fetchJ(`https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=${sl}&tl=${tl}&q=${encodeURIComponent(text)}`,{},sig);
   if(d&&Array.isArray(d.sentences)){const s=d.sentences.filter(x=>x&&typeof x.trans==='string').map(x=>[x.trans,x.orig||'']);if(s.length)return{segs:s}}
   if(Array.isArray(d)){const a=d[0];if(typeof a==='string'&&a.trim())return{text:a};if(Array.isArray(a)&&typeof a[0]==='string'&&a[0].trim())return{text:a[0]}}
   throw new Error('resposta inesperada');
+}
+/* Último recurso para o Google: passa por um proxy público (útil quando o acesso direto é bloqueado) */
+async function viaProxy(text,sl,tl,sig){
+  return parseGtx(await fetchJ('https://api.allorigins.win/raw?url='+encodeURIComponent(gtxUrl('translate.googleapis.com',text,sl,tl)),{},sig));
 }
 const lingva=host=>async(text,sl,tl,sig)=>{
   const d=await fetchJ(`${host}/api/v1/${lc(sl)}/${lc(tl)}/${encodeURIComponent(text)}`,{},sig);
@@ -464,39 +487,88 @@ async function mymemory(text,sl,tl,sig){
   if(st!=='200'||typeof t!=='string'||!t.trim()||/MYMEMORY WARNING|INVALID|QUERY LENGTH/i.test(t)){const e=new Error('serviço indisponível');if(st==='429')e.status=429;throw e}
   return{text:decEnt(t)};
 }
+/* Tradutor do próprio navegador (Chrome/Edge recentes no computador): roda no aparelho, sem internet nem limites. */
+const local={id:'local',tier:1,max:6000,tr:null,
+  async init(){
+    try{
+      if(typeof Translator==='undefined')return false;
+      const o={sourceLanguage:lc(L[S.src].tl),targetLanguage:lc(L[S.dst].tl)};
+      const a=await Translator.availability(o);
+      if(a==='unavailable')return false;
+      if(a==='available'){this.tr=await Translator.create(o);return true}
+      Translator.create(o).then(t=>{this.tr=t;this.ok=true;this.dead=false}).catch(()=>{});
+      return false;
+    }catch(e){return false}
+  },
+  async run(text){
+    if(!this.tr)throw new Error('indisponível');
+    const t=await this.tr.translate(text);
+    if(typeof t!=='string'||!t.trim())throw new Error('resposta vazia');
+    return{text:t};
+  }
+};
 /* tier: prioridade (menor = preferido). max: tamanho máximo (texto já codificado para URL). */
 const PROV=[
-  {id:'gtx',tier:0,max:1800,run:(t,a,b,s)=>gtx('translate.googleapis.com',t,a,b,s)},
-  {id:'gtx2',tier:0,max:1800,run:(t,a,b,s)=>gtx('translate.google.com',t,a,b,s)},
+  {id:'gtx',tier:0,max:1800,run:gtx('translate.googleapis.com')},
+  {id:'gtx2',tier:0,max:1800,run:gtx('translate.google.com')},
   {id:'c5',tier:0,max:1800,run:clients5},
+  local,
   {id:'ly1',tier:1,max:1000,run:lingva('https://lingva.ml')},
   {id:'ly2',tier:1,max:1000,run:lingva('https://lingva.thedaviddelta.com')},
-  {id:'mm',tier:2,max:480,run:mymemory}
+  {id:'gpx',tier:2,max:600,run:viaProxy},
+  {id:'mm',tier:3,max:480,run:mymemory}
 ];
-const resetProv=()=>PROV.forEach(p=>{p.until=0;p.fail=0;p.last=0});resetProv();
+const resetProv=()=>PROV.forEach(p=>{p.until=0;p.fail=0;p.net=0;p.last=0;p.ok=false;p.dead=false});resetProv();
 
-/* Faz UMA requisição de tradução, trocando de serviço e esperando quando preciso */
-async function ask(text,sl,tl,sig,onRate){
-  const n=encodeURIComponent(text).length,usable=PROV.filter(p=>p.max>=n);
-  if(!usable.length){const e=new Error('texto grande demais');e.big=true;throw e}
+/* Normaliza só letras/números para comparar textos */
+const nz=s=>s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');
+
+/* Testa todos os serviços em paralelo e guarda quais funcionam de verdade */
+async function probe(sig){
+  resetProv();
+  const toEn=S.dst==='en';
+  const sample=toEn?'O tempo estava frio e a velha casa permanecia silenciosa na colina, enquanto as crianças dormiam.':'The weather was cold and the old house stood silent on the hill, while the children were sleeping.';
+  const s0=toEn?'pt':'en',tl=L[S.dst].tl;
+  await Promise.all(PROV.map(async p=>{
+    try{
+      if(p.init&&!(await p.init()))return;
+      const r=await Promise.race([p.run(sample,s0,tl,sig),new Promise((_,j)=>setTimeout(()=>j(new Error('tempo esgotado')),12000))]);
+      const t=r.segs?r.segs.map(s=>s[0]).join(''):r.text;
+      if(typeof t==='string'&&t.trim()&&nz(t)!==nz(sample))p.ok=true;
+    }catch(e){if(sig.aborted)throw e}
+  }));
+  if(sig.aborted)throw abortErr();
+  const ok=PROV.filter(p=>p.ok);
+  if(!ok.length)throw new Error('nenhum serviço de tradução respondeu. Verifique a internet, desative bloqueadores de anúncios/privacidade para esta página e abra o site direto no navegador (não dentro de uma pré-visualização, que bloqueia conexões externas).');
+  const mx=Math.max(...ok.map(p=>p.max));
+  S.lim=Math.min(1000,mx);S.enc=Math.min(1500,mx);
+  return ok.length;
+}
+
+/* Faz UMA requisição de tradução, trocando de serviço e esperando quando preciso.
+   avoid = serviços que NÃO devem ser usados (ex.: já devolveram o texto sem traduzir). */
+async function ask(text,sl,tl,sig,onRate,avoid){
+  const n=encodeURIComponent(text).length,usable=PROV.filter(p=>p.ok&&p.max>=n);
+  if(!usable.length){const e=new Error('texto grande demais para os serviços disponíveis');e.big=true;throw e}
   let err;
   for(let a=0;a<14;a++){
     if(sig.aborted)throw abortErr();
-    const now=Date.now();
-    const cand=usable.filter(p=>p.until<=now).sort((x,y)=>x.tier-y.tier||x.last-y.last);
+    const now=Date.now(),alive=usable.filter(p=>!p.dead&&!(avoid&&avoid.has(p.id)));
+    if(!alive.length){const e=new Error(err?err.message:'nenhum serviço disponível');e.noalt=true;throw e}
+    const cand=alive.filter(p=>p.until<=now).sort((x,y)=>x.tier-y.tier||x.last-y.last);
     if(!cand.length){
-      const wait=Math.min(...usable.map(p=>p.until-now));
+      const wait=Math.min(...alive.map(p=>p.until-now));
       await sleep(Math.min(Math.max(wait,500),20000)+Math.random()*300,sig);
       continue;
     }
     const p=cand[0];p.last=now;
-    try{const r=await p.run(text,sl,tl,sig);p.fail=0;return r}
+    try{const r=await p.run(text,sl,tl,sig);p.fail=0;p.net=0;r.pid=p.id;return r}
     catch(e){
       if(sig.aborted)throw e;
       err=e;p.fail++;
       if(e.status===429||e.status===403||e.status===503){onRate();p.until=Date.now()+Math.min(5000*Math.pow(2,Math.min(p.fail-1,4)),60000)}
+      else if(e instanceof TypeError){p.net++;if(p.net>=3)p.dead=true;else p.until=Date.now()+2000*p.net}   /* bloqueado / sem rede */
       else if(p.fail>=2)p.until=Date.now()+Math.min(10000*p.fail,60000);
-      if(e.big)throw e;
       await sleep(150,sig);
     }
   }
@@ -504,7 +576,6 @@ async function ask(text,sl,tl,sig,onRate){
 }
 
 /* Alinha os segmentos devolvidos com os parágrafos enviados, comparando o texto original (só letras/números) */
-const nz=s=>s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');
 function align(gs,segs){
   const tg=gs.map(nz),out=[];let i=0,acc='',cur=[];
   for(const s of segs){
@@ -525,20 +596,23 @@ const ratio=(t,set)=>{const w=t.toLowerCase().match(/\p{L}+/gu)||[];let n=0;for(
 function untranslated(src,tr,sk,dk){
   if(!hasLetters(src))return false;
   if(same(src,tr))return true;
-  if(wc(tr)<10&&dk!=='zh')return false;
-  if(dk==='zh')return tr.length>=12&&!/[\u4e00-\u9fff]/.test(tr);
-  if(sk==='zh')return (tr.match(/[\u4e00-\u9fff]/g)||[]).length>tr.length*.2;
-  if(!SETS[sk]||!SETS[dk])return false;
+  if(CJK.has(dk))return tr.length>=12&&!CJKRE.test(tr);
+  if(CJK.has(sk))return (tr.match(/[\u3040-\u30ff\u4e00-\u9fff]/g)||[]).length>tr.length*.2;
+  if(wc(tr)<10||!SETS[sk]||!SETS[dk])return false;
   const rs=ratio(tr,SETS[sk]),rd=ratio(tr,SETS[dk]);
   return rs>=.12&&rs>rd*1.3;
 }
 
-/* Traduz um lote de parágrafos. Retorna um array com uma tradução por parágrafo. */
-async function tBlock(texts,sl,tl,sig,onRate,g,chk){
-  const halves=async()=>{const h=texts.length>>1;const a=await tBlock(texts.slice(0,h),sl,tl,sig,onRate,g,chk);const b=await tBlock(texts.slice(h),sl,tl,sig,onRate,g,chk);return a.concat(b)};
+/* Traduz um lote de parágrafos. Retorna {parts: uma tradução por parágrafo, pid: serviço usado}. */
+async function tBlock(texts,sl,tl,sig,onRate,g,avoid){
+  const halves=async()=>{
+    const h=texts.length>>1;
+    const a=await tBlock(texts.slice(0,h),sl,tl,sig,onRate,g,avoid),b=await tBlock(texts.slice(h),sl,tl,sig,onRate,g,avoid);
+    return{parts:a.parts.concat(b.parts),pid:a.pid};
+  };
   const gs=texts.map(g.p);
   let res;
-  try{res=await ask(gs.join('\n'),sl,tl,sig,onRate)}
+  try{res=await ask(gs.join('\n'),sl,tl,sig,onRate,avoid)}
   catch(e){if(e.big&&texts.length>1)return halves();throw e}
   let parts=res.segs?align(gs,res.segs):null;
   if(!parts){
@@ -548,23 +622,30 @@ async function tBlock(texts,sl,tl,sig,onRate,g,chk){
   }
   if(parts)parts=parts.map(p=>g.r(p).replace(/\s+/g,' ').trim());
   if(!parts||parts.some(p=>!p)){if(texts.length>1)return halves();throw new Error('o tradutor devolveu uma resposta vazia')}
-  if(chk&&sl!=='auto'){
-    for(let i=0;i<parts.length;i++)if(same(texts[i],parts[i])){
-      try{const r=await tBlock([texts[i]],'auto',tl,sig,onRate,g,false);if(r[0])parts[i]=r[0]}
-      catch(e){if(sig.aborted)throw e}
-    }
+  return{parts,pid:res.pid};
+}
+/* Refaz UM trecho suspeito, sempre em um serviço diferente do anterior. Retorna a tradução ou null. */
+async function fixOne(text,tl,sig,onRate,g,pid){
+  const avoid=new Set(pid?[pid]:[]);
+  for(let k=0;k<3;k++){
+    let r;
+    try{r=await tBlock([text],'auto',tl,sig,onRate,g,avoid)}
+    catch(e){if(sig.aborted)throw e;if(e.noalt)return null;continue}
+    if(!untranslated(text,r.parts[0],S.src,S.dst))return r.parts[0];
+    if(r.pid)avoid.add(r.pid);
   }
-  return parts;
+  return null;
 }
 
 /* Divide parágrafos muito longos em trechos menores */
-function split(t){
-  if(encodeURIComponent(t).length<=1000)return[t];
+const hard=(s,lim)=>{const o=[];let c='';for(const ch of s){if(encodeURIComponent(c+ch).length>lim){o.push(c);c=''}c+=ch}if(c)o.push(c);return o};
+function split(t,lim){
+  if(encodeURIComponent(t).length<=lim)return[t];
   const ss=t.match(/[^.!?。！？]+[.!?。！？]+["”’')\]]*\s*|[^.!?。！？]+$/g)||[t],out=[];let cur='';
   const push=()=>{if(cur.trim())out.push(cur.trim());cur=''};
   for(const s of ss){
-    if(encodeURIComponent(s).length>1000){push();for(let i=0;i<s.length;i+=100)out.push(s.slice(i,i+100));continue}
-    if(encodeURIComponent(cur+s).length>1000)push();cur+=s;
+    if(encodeURIComponent(s).length>lim){push();hard(s,lim).forEach(x=>{if(x.trim())out.push(x.trim())});continue}
+    if(encodeURIComponent(cur+s).length>lim)push();cur+=s;
   }
   push();return out;
 }
@@ -574,7 +655,7 @@ function collect(){
   for(const ch of S.book.chapters)for(const it of ch.items){
     if(it.k==='img'||it.tr!=null)continue;
     if(!hasLetters(it.t)){it.tr=it.t;continue}
-    const cs=split(it.t);
+    const cs=split(it.t,S.lim);
     if(!it.parts||it.parts.length!==cs.length)it.parts=cs.map(()=>null);
     cs.forEach((c,i)=>{if(it.parts[i]==null)units.push({it,i,t:c})});
   }
@@ -584,12 +665,13 @@ function pack(units,sp){
   const blocks=[];let cur=[],len=0,enc=0;
   for(const u of units){
     const e=encodeURIComponent(u.t).length+3;
-    if(cur.length&&(len+u.t.length>sp.bs||enc+e>ENC)){blocks.push(cur);cur=[];len=0;enc=0}
+    if(cur.length&&(len+u.t.length>sp.bs||enc+e>S.enc)){blocks.push(cur);cur=[];len=0;enc=0}
     cur.push(u);len+=u.t.length;enc+=e;
   }
   if(cur.length)blocks.push(cur);
   return blocks;
 }
+function wipe(){if(S.book)S.book.chapters.forEach(c=>c.items.forEach(i=>{delete i.tr;delete i.parts;delete i.tries}));S.pair=''}
 
 let rafId=0;
 function setProgress(p,eta){
@@ -601,29 +683,23 @@ $('cancel').onclick=()=>{if(S.ctrl)S.ctrl.abort()};
 $('go').onclick=async()=>{
   if(!S.book||S.busy)return;
   if(S.src===S.dst){setStatus('Escolha idiomas de origem e destino diferentes.','err');return}
-  S.busy=true;S.lastErr='';
-  const ctrl=S.ctrl=new AbortController(),sig=ctrl.signal,sl=L[S.src].tl,tl=L[S.dst].tl,sp=speed();
-  let wake=null,started=false;
+  S.busy=true;S.lastErr='';S.keptN=0;
+  const ctrl=S.ctrl=new AbortController(),sig=ctrl.signal,sp=speed(),tl=L[S.dst].tl,joiner=CJK.has(S.dst)?'':' ';
+  let wake=null,started=false,fatal=null;
   try{
     const names=[...new Set([...parseNames(),...S.auto])];S.used=names;S.speed=speedName();
-    const g=guard(names),pair=sl+'>'+tl+'>'+names.join('|');
-    if(S.pair!==pair){S.book.chapters.forEach(c=>c.items.forEach(i=>{delete i.tr;delete i.parts;delete i.tries}));S.pair=pair}
+    const g=guard(names),pair=S.src+'>'+S.dst+'>'+names.join('|');
+    if(S.pair!==pair){wipe();S.pair=pair}
     S.pairLang={sl:S.src,tl:S.dst};
-    resetProv();
-    $('bar').style.width='0%';$('pct').textContent='0%';$('eta').textContent='Conectando ao serviço de tradução...';show('prog');
+    $('bar').style.width='0%';$('pct').textContent='0%';$('eta').textContent='Verificando os serviços de tradução...';show('prog');
     try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}catch(e){}
 
-    /* teste de conexão */
-    try{await ask(tl==='en'?'Olá, como vai você?':'Hello, how are you?','auto',tl,sig,()=>{})}
-    catch(e){
-      if(sig.aborted)throw e;
-      throw new Error('não foi possível acessar nenhum serviço de tradução. Verifique a internet, desative bloqueadores de anúncios/privacidade para esta página e abra o arquivo direto no navegador (ou na página do GitHub), não dentro de uma pré-visualização, que bloqueia conexões externas.');
-    }
+    await probe(sig);
     started=true;
 
     let units=collect();
     const total=units.reduce((s,u)=>s+u.t.length,0)||1,t0=performance.now();
-    let done=0,stall=0,allowed=sp.c,okRun=0,slow=false;
+    let done=0,stall=0,allowed=sp.c,okRun=0,slow=false,seen=0,flag=0,kept=0;
     const IDLE='Você pode cancelar quando quiser.';
     $('eta').textContent=IDLE;
     const onRate=()=>{allowed=Math.max(1,allowed-1);okRun=0;slow=true;$('eta').textContent='O serviço limitou as requisições. Reduzindo a velocidade e continuando...'};
@@ -637,17 +713,28 @@ $('go').onclick=async()=>{
           if(w>=allowed){await sleep(300,sig);continue}
           const b=blocks[next++];
           try{
-            const outs=await tBlock(b.map(u=>u.t),S.pairLang.sl==='zh'?'zh-CN':sl,tl,sig,onRate,g,true);
-            b.forEach((u,i)=>{
-              u.it.parts[u.i]=outs[i];
-              if(u.it.parts.every(x=>x!=null)){
-                const tr=u.it.parts.join(tl==='zh-CN'?'':' ');
-                /* verificação: parece não traduzido? refaz (até 3 vezes) em vez de aceitar */
-                if(untranslated(u.it.t,tr,S.pairLang.sl,S.pairLang.tl)&&(u.it.tries=(u.it.tries||0)+1)<=3)u.it.parts=u.it.parts.map(()=>null);
-                else u.it.tr=tr;
+            const r=await tBlock(b.map(u=>u.t),'auto',tl,sig,onRate,g,null);
+            for(let i=0;i<b.length;i++){
+              const u=b[i];let out=r.parts[i];
+              seen++;
+              if(untranslated(u.t,out,S.src,S.dst)){
+                flag++;
+                const fx=await fixOne(u.t,tl,sig,onRate,g,r.pid);
+                if(fx!=null)out=fx;
+                else{
+                  /* nenhum serviço conseguiu traduzir: tenta de novo na próxima rodada; só aceita depois de 2 rodadas */
+                  u.it.tries=(u.it.tries||0)+1;
+                  if(u.it.tries<2)continue;
+                  if(same(u.t,out)){kept+=u.t.length;S.keptN++}
+                }
               }
-            });
-            done+=b.reduce((s,u)=>s+u.t.length,0);
+              u.it.parts[u.i]=out;done+=u.t.length;
+              if(u.it.parts.every(x=>x!=null))u.it.tr=u.it.parts.join(joiner);
+            }
+            if(seen>=12&&flag/seen>.7){
+              fatal=new Error(`as traduções estão voltando iguais ao texto original. Isso acontece quando o livro já está em ${L[S.dst].n} ou quando os serviços estão devolvendo o texto sem traduzir. Confira o idioma de destino e tente de novo. Nada foi exibido para não mostrar texto sem tradução.`);
+              ctrl.abort();throw abortErr();
+            }
             if(++okRun>=8&&allowed<sp.c){allowed++;okRun=0}
             if(slow&&okRun>=2){slow=false;$('eta').textContent=IDLE}
             const el=(performance.now()-t0)/1000,rem=done?Math.max(0,(total-done)/(done/el)):0;
@@ -663,7 +750,7 @@ $('go').onclick=async()=>{
         stall++;if(stall>=MAXSTALL)break;
         $('eta').textContent=`Serviço lento ou indisponível. Tentando de novo os trechos pendentes (${stall}/${MAXSTALL-1})...`;
         await sleep(Math.min(3000*stall,20000),sig);
-        PROV.forEach(p=>{p.until=0});
+        PROV.forEach(p=>{p.until=0;p.dead=false});
       }else stall=0;
     }
     if(sig.aborted)throw abortErr();
@@ -671,10 +758,15 @@ $('go').onclick=async()=>{
       const n=new Set(units.map(u=>u.it)).size;
       throw new Error(`${n} parágrafo(s) ainda sem tradução (${S.lastErr||'serviço indisponível'}). Para não mostrar texto no idioma original, nada foi exibido. Toque em Continuar para retomar: o que já foi traduzido está guardado.`);
     }
+    if(kept/total>.15){
+      fatal=new Error(`grande parte do livro (${Math.round(kept/total*100)}%) voltou sem tradução. Provavelmente o livro já está em ${L[S.dst].n}. Confira o idioma de destino. Nada foi exibido para não mostrar texto sem tradução.`);
+      throw fatal;
+    }
     $('bar').style.width='100%';$('pct').textContent='100%';
     build();$('goT').textContent='Traduzir';setStatus('','','dstat');show('prev');
   }catch(err){
-    if(err.name==='AbortError'||sig.aborted){$('goT').textContent='Continuar';setStatus('Tradução cancelada. O que já foi traduzido foi guardado: toque em Continuar para retomar.')}
+    if(fatal){wipe();$('goT').textContent='Traduzir';setStatus('Erro: '+fatal.message,'err')}
+    else if(err.name==='AbortError'||sig.aborted){$('goT').textContent='Continuar';setStatus('Tradução cancelada. O que já foi traduzido foi guardado: toque em Continuar para retomar.')}
     else{console.error(err);if(started)$('goT').textContent='Continuar';setStatus('Erro: '+err.message,'err')}
     show('home');
   }finally{S.busy=false;S.ctrl=null;if(wake){try{wake.release()}catch(e){}}}
@@ -706,7 +798,9 @@ function build(){
   const step=()=>{if(tok!==R.tok||R.n>=chs.length)return;more(4);setTimeout(step,40)};setTimeout(step,80);
   $('chsel').innerHTML=chs.map((c,i)=>`<option value="${i}">${i+1}. ${esc(chTitle(c,i))}</option>`).join('');
   const ni=S.book.chapters.reduce((s,c)=>s+c.items.filter(x=>x.k==='img').length,0);
-  $('info').innerHTML=[`Arquivo: ${esc(S.fname)}`,`${L[S.pairLang.sl].n} → ${L[S.pairLang.tl].n}`,`Velocidade: ${S.speed}`,`${S.used.length} nome(s) preservado(s)`,`${ni} imagem(ns) mantida(s)`].map(t=>`<span class="tag">${t}</span>`).join('');
+  const tags=[`Arquivo: ${esc(S.fname)}`,`${L[S.pairLang.sl].n} → ${L[S.pairLang.tl].n}`,`Velocidade: ${S.speed}`,`${S.used.length} nome(s) preservado(s)`,`${ni} imagem(ns) mantida(s)`];
+  if(S.keptN)tags.push(`${S.keptN} trecho(s) sem mudança (já estavam no idioma de destino)`);
+  $('info').innerHTML=tags.map(t=>`<span class="tag">${t}</span>`).join('');
   updatePos();
 }
 function updatePos(){
@@ -771,4 +865,3 @@ $('pdf').onclick=()=>{
 </script>
 </body>
 </html>
-
