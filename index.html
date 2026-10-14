@@ -120,6 +120,8 @@ select{flex:1;min-width:0;height:44px;padding:0 14px;border:0;border-radius:999p
       <button class="btn" id="clr" disabled><svg class="i"><use href="#x"/></svg>Limpar</button>
     </div>
     <div class="status" id="status" aria-live="polite"></div>
+    <button class="btn" id="test" style="margin-top:14px">Testar conexão com o tradutor</button>
+    <p class="hint">Versão 3. Se o teste falhar, o bloqueio vem do ambiente onde a página está aberta, não do livro.</p>
   </div>
 </section>
 
@@ -601,6 +603,12 @@ $('pdf').onclick=()=>{
   if(!window.open(url,'_blank')){URL.revokeObjectURL(url);setStatus('Permita pop-ups para gerar o PDF.','err','dstat');return}
   setStatus('Na janela que abriu, escolha "Salvar como PDF".','','dstat');setTimeout(()=>URL.revokeObjectURL(url),300000);
 };
+$('test').onclick=async()=>{
+  setStatus('Testando...');
+  try{const o=await raw('The king walked home with his sister.','en','pt',undefined,()=>{});setStatus('Funcionou. Resultado: "'+o+'"','ok')}
+  catch(e){setStatus('Falhou: '+(e.status?'HTTP '+e.status:e.message)+'. A conexão com o Google Tradutor está bloqueada neste ambiente.','err')}
+};
 </script>
 </body>
 </html>
+
