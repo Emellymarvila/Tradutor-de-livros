@@ -31,7 +31,7 @@ h3{color:var(--ink);font-weight:700;margin:0 0 2px;font-size:15px}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-p{background:var(--b);color:#fff;font-weight:700}
 .btn-p:hover:not(:disabled){background:var(--bh)}
-.btn:focus-visible,.drop:focus-visible,select:focus-visible,textarea:focus-visible,.chip input:focus-visible+span{outline:3px solid var(--b);outline-offset:2px}
+.btn:focus-visible,.drop:focus-within,select:focus-visible,textarea:focus-visible,.chip input:focus-visible+span{outline:3px solid var(--b);outline-offset:2px}
 /* Área de envio: é um <label> ligado ao <input type=file>. O próprio navegador abre o
    gerenciador de arquivos ao tocar (Android, iOS e computador), sem depender de JavaScript. */
 .drop{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:28px 14px;border:1.5px dashed var(--mu);border-radius:20px;cursor:pointer;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
@@ -39,6 +39,7 @@ h3{color:var(--ink);font-weight:700;margin:0 0 2px;font-size:15px}
 .drop .i{width:38px;height:38px;color:var(--b);margin-bottom:6px}
 .drop strong{color:var(--ink);font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drop span{font-size:12.5px;color:var(--mu)}
+.drop *{pointer-events:none}
 .pick{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);margin:0;padding:0;border:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{position:relative}
@@ -94,10 +95,10 @@ select{flex:1;min-width:0;height:44px;padding:0 14px;border:0;border-radius:999p
 <section id="v-home">
   <div class="card">
     <h3>1. Envie seu livro</h3><p class="sub">Arquivos .epub ou .pdf. As imagens ficam na mesma posição.</p>
-    <label class="drop" id="drop" for="file" tabindex="0" role="button" aria-label="Escolher arquivo EPUB ou PDF">
+    <label class="drop" id="drop" for="file">
       <svg class="i" id="dropIcon"><use href="#up"/></svg>
       <strong id="dropT">Toque para escolher o arquivo</strong><span id="dropS">EPUB ou PDF · no computador, você também pode arrastar</span>
-      <input type="file" id="file" class="pick" tabindex="-1">
+      <input type="file" id="file" class="pick" accept=".epub,.pdf,application/epub+zip,application/pdf" aria-label="Escolher arquivo EPUB ou PDF">
     </label>
 
     <div class="two sec">
@@ -222,6 +223,12 @@ function detectLang(t){
 }
 
 /* ---------- Nomes próprios ---------- */
+/* Pronomes e palavras de função: aparecem com maiúscula no meio das frases (ex.: "I", "She" depois de aspas) e NÃO são nomes. */
+const PRON='i you he she it we they me him her us them my your his its our their mine yours hers ours theirs myself yourself himself herself itself ourselves themselves yourselves who whom whose which what these those yes oh okay well now so and or if because although though however maybe perhaps please thanks thank sorry hello hey all both each every some any one none nothing something anything everything everyone someone anyone nobody '+
+ 'yo tú vos él ella usted nosotros nosotras vosotros ustedes mi tu su nuestro eu ele você nós vós eles elas vocês meu minha teu tua seu sua nosso nossa '+
+ 'je il elle on nous vous ils elles moi toi lui eux mon ma mes ton ta tes son sa ses notre votre leur io lei noi voi loro mio mia tuo suo ich du er sie es wir ihr mein dein sein unser';
+/* Contrações em inglês (I'm, I've, I'll, I'd, you're, don't...) também nunca são nomes. */
+const CONTR=/['’](m|ve|ll|d|re|t)$/i;
 const STOP=new Set(('the and but for with from that this then when where what who why how his her their our your its they there here chapter part book prologue epilogue '+
  'king queen prince princess lord lady sir madam captain doctor professor mister miss mrs master general sergeant father mother uncle aunt brother sister saint judge president minister mayor officer inspector detective colonel major lieutenant commander admiral duke duchess count baron emperor empress '+
  'monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december god '+
@@ -230,7 +237,7 @@ const STOP=new Set(('the and but for with from that this then when where what wh
  'lunes martes miércoles jueves viernes sábado domingo enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre dios '+
  'rei rainha príncipe princesa senhor senhora capitão doutor doutora professor professora padre mãe tio tia irmão irmã santo juiz presidente ministro prefeito coronel major tenente comandante almirante duque duquesa conde barão imperador imperatriz '+
  'segunda terça quarta quinta sexta sábado domingo janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro deus '+
- 'monsieur madame mademoiselle docteur roi reine chapitre partie livre dieu lundi mardi mercredi jeudi vendredi samedi dimanche').split(' '));
+ 'monsieur madame mademoiselle docteur roi reine chapitre partie livre dieu lundi mardi mercredi jeudi vendredi samedi dimanche '+PRON).split(' '));
 function autoNames(chs){
   const cap=new Map(),low=new Map();
   for(const ch of chs)for(const it of ch.items){
@@ -238,7 +245,9 @@ function autoNames(chs){
     let st=true;
     for(const w of it.t.match(/[\p{L}'’-]+|[.!?…:]+/gu)||[]){
       if(/^[.!?…:]+$/.test(w)){st=true;continue}
-      const k=w.replace(/^['’-]+|['’-]+$/g,'').replace(/['’]s$/i,'');
+      const raw=w.replace(/^['’-]+|['’-]+$/g,'');
+      if(CONTR.test(raw)){st=false;continue}
+      const k=raw.replace(/['’]s$/i,'');
       if(k.length<3||CJKRE.test(k)){st=false;continue}
       const lw=k.toLowerCase();
       if(/^\p{Lu}/u.test(k)){if(!st&&!STOP.has(lw)&&k!==k.toUpperCase())cap.set(k,(cap.get(k)||0)+1)}
@@ -261,9 +270,8 @@ function guard(names){
 
 /* ---------- Arquivo ---------- */
 const drop=$('drop'),fileEl=$('file');
-/* O toque na área é tratado pelo próprio <label>: o navegador abre o gerenciador de arquivos sozinho.
-   Aqui só tratamos o teclado (Enter/Espaço) e o arrastar-e-soltar do computador. */
-drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fileEl.click()}});
+/* O toque (e o teclado) na área é tratado pelo próprio <label>/<input>: o navegador abre o gerenciador
+   de arquivos sozinho, igual ao Juntador de PDFs. Aqui só tratamos o arrastar-e-soltar do computador. */
 /* Copia o arquivo para a memória ANTES de limpar o campo: no Android o arquivo escolhido pode ficar ilegível depois. */
 fileEl.addEventListener('change',async()=>{
   const f=fileEl.files&&fileEl.files[0];if(!f)return;
