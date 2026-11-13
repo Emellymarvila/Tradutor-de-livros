@@ -2,7 +2,7 @@
 
 > **Traduza seus livros em EPUB e PDF diretamente no navegador — 100% local, sem instalação, sem servidor, sem cadastro e gratuito!**
 
-<img align="center" src="imagens-tradutor-de-livros/tela inicial.png" width="100%" alt="tela inicial"><br>
+<img align="center" src="imagens-tradutor-de-livros/tela inicial.png" width="100%" alt="Tela inicial"><br>
 
 ---
 
@@ -24,15 +24,21 @@ Ideal para quem quer ler obras estrangeiras no idioma preferido sem depender de 
 - 📥 Download do livro traduzido no mesmo formato original ou outro
 
 ---
-🖼️ Demonstração
-Tela inicial
+
+## 🖼️ Demonstração
+
+### Tela inicial
+
 <img align="center" src="imagens-tradutor-de-livros/tela inicial.gif" width="500" alt="Tela inicial">
 
-Processo de tradução
-<img align="center" src="imagens-tradutor-de-livros/Processo.gif" width="500" alt="Tela inicial">
+### Processo de tradução
 
-Resultado final
-<img align="center" src="imagens-tradutor-de-livros/Resultado final.gif" width="500" alt="Tela inicial">
+<img align="center" src="imagens-tradutor-de-livros/Processo.gif" width="500" alt="Processo de tradução">
+
+### Resultado final
+
+<img align="center" src="imagens-tradutor-de-livros/Resultado final.gif" width="500" alt="Resultado final">
 
 ---
+
 ⭐ **Se este projeto te ajudou, deixe uma estrela no repositório!** ⭐
