@@ -5,7 +5,6 @@
 <img align="center" src="imagens-tradutor-de-livros/tela inicial.png" width="100%" alt="Tela inicial do Tradutor de Livros"><br>
 
 ---
-
 ## 🖼️ Demonstração
 
 ### Tela inicial
