@@ -26,13 +26,13 @@ Ideal para quem quer ler obras estrangeiras no idioma preferido sem depender de 
 ---
 🖼️ Demonstração
 Tela inicial
-
+<img align="center" src="imagens-tradutor-de-livros/tela inicial.gif" width="500" alt="Tela inicial">
 
 Processo de tradução
-
+<img align="center" src="imagens-tradutor-de-livros/Processo.gif" width="500" alt="Tela inicial">
 
 Resultado final
-
+<img align="center" src="imagens-tradutor-de-livros/Resultado final.gif" width="500" alt="Tela inicial">
 
 ---
 ⭐ **Se este projeto te ajudou, deixe uma estrela no repositório!** ⭐
