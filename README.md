@@ -29,7 +29,7 @@ Ideal para quem quer ler obras estrangeiras no idioma preferido sem depender de 
 
 ### Tela inicial
 
-<img align="center" src="imagens-tradutor-de-livros/tela inicial.gif" width="500" alt="Tela inicial">
+<img align="center" src="imagens-tradutor-de-livros/Tela inicial.gif" width="500" alt="Tela inicial">
 
 ### Processo de tradução
 
