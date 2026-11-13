@@ -2,7 +2,7 @@
 
 > **Traduza seus livros em EPUB e PDF diretamente no navegador — 100% local, sem instalação, sem servidor, sem cadastro e gratuito!**
 
-![Preview do Tradutor de Livros](https://via.placeholder.com/1200x600/4A90E2/FFFFFF?text=Preview+do+Tradutor+de+Livros)
+<img align="center" src="imagens-tradutor-de-livros/tela inicial.png" width="100%" alt="tela inicial"><br>
 
 ---
 
