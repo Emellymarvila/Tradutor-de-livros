@@ -17,12 +17,11 @@ Ideal para quem quer ler obras estrangeiras no idioma preferido sem depender de 
 ## 🚀 Funcionalidades
 
 - 📖 Suporte a arquivos **EPUB** e **PDF**
-- 🌍 Tradução automática de parágrafos (via API de tradução ou modelo local)
 - 🔒 **100% no navegador** — seus arquivos nunca saem do seu dispositivo
 - ⚡ Sem instalação, sem cadastro, sem servidor
 - 🆓 Totalmente **gratuito** e open source
 - 🎨 Interface simples e responsiva
-- 📥 Download do livro traduzido no mesmo formato original
+- 📥 Download do livro traduzido no mesmo formato original ou outro
 
 ---
 
