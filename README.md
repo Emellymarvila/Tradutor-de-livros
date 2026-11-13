@@ -38,7 +38,3 @@ Ideal para quem quer ler obras estrangeiras no idioma preferido sem depender de 
 ### Resultado final
 
 <img align="center" src="imagens-tradutor-de-livros/Resultado final.gif" width="500" alt="Resultado final">
-
----
-
-⭐ **Se este projeto te ajudou, deixe uma estrela no repositório!** ⭐
