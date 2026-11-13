@@ -24,5 +24,15 @@ Ideal para quem quer ler obras estrangeiras no idioma preferido sem depender de 
 - 📥 Download do livro traduzido no mesmo formato original ou outro
 
 ---
+🖼️ Demonstração
+Tela inicial
 
+
+Processo de tradução
+
+
+Resultado final
+
+
+---
 ⭐ **Se este projeto te ajudou, deixe uma estrela no repositório!** ⭐
