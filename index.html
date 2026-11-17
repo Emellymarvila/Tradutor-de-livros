@@ -32,15 +32,13 @@ h3{color:var(--ink);font-weight:700;margin:0 0 2px;font-size:15px}
 .btn-p{background:var(--b);color:#fff;font-weight:700}
 .btn-p:hover:not(:disabled){background:var(--bh)}
 .btn:focus-visible,.drop:focus-within,select:focus-visible,textarea:focus-visible,.chip input:focus-visible+span{outline:3px solid var(--b);outline-offset:2px}
-/* Área de envio: é um <label> ligado ao <input type=file>. O próprio navegador abre o
-   gerenciador de arquivos ao tocar (Android, iOS e computador), sem depender de JavaScript. */
-.drop{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:28px 14px;border:1.5px dashed var(--mu);border-radius:20px;cursor:pointer;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+/* Área de envio SEM imagem/ícone: o próprio <input type=file> cobre o bloco inteiro (invisível).
+   Assim, o toque cai direto no campo nativo e o navegador abre "Meus arquivos" (Android, iOS e computador). */
+.drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;min-height:110px;padding:28px 14px;border:1.5px dashed var(--mu);border-radius:20px;overflow:hidden}
 .drop:hover,.drop.drag,.drop.has{border-color:var(--b);background:var(--bs)}
-.drop .i{width:38px;height:38px;color:var(--b);margin-bottom:6px}
-.drop strong{color:var(--ink);font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.drop span{font-size:12.5px;color:var(--mu)}
-.drop *{pointer-events:none}
-.pick{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);margin:0;padding:0;border:0}
+.drop strong{color:var(--ink);font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
+.drop span{font-size:12.5px;color:var(--mu);pointer-events:none}
+.pick{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer;font-size:0;z-index:2}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{position:relative}
 .chip input{position:absolute;opacity:0;pointer-events:none}
@@ -78,8 +76,6 @@ select{flex:1;min-width:0;height:44px;padding:0 14px;border:0;border-radius:999p
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-<symbol id="up" viewBox="0 0 24 24"><path d="M12 13v8"/><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="m8 17 4-4 4 4"/></symbol>
-<symbol id="file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
 <symbol id="x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
 <symbol id="ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
 <symbol id="dl" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></symbol>
@@ -95,11 +91,10 @@ select{flex:1;min-width:0;height:44px;padding:0 14px;border:0;border-radius:999p
 <section id="v-home">
   <div class="card">
     <h3>1. Envie seu livro</h3><p class="sub">Arquivos .epub ou .pdf. As imagens ficam na mesma posição.</p>
-    <label class="drop" id="drop" for="file">
-      <svg class="i" id="dropIcon"><use href="#up"/></svg>
+    <div class="drop" id="drop">
       <strong id="dropT">Toque para escolher o arquivo</strong><span id="dropS">EPUB ou PDF · no computador, você também pode arrastar</span>
       <input type="file" id="file" class="pick" accept=".epub,.pdf,application/epub+zip,application/pdf" aria-label="Escolher arquivo EPUB ou PDF">
-    </label>
+    </div>
 
     <div class="two sec">
       <div><h3>2. Idioma do livro</h3><p class="sub">Detectado ao abrir o arquivo</p><div class="chips" id="gSrc"></div></div>
@@ -195,7 +190,7 @@ const decEnt=s=>{if(!/&[#\w]+;/.test(s))return s;const t=document.createElement(
 /* ---------- Seletores de idioma e velocidade ---------- */
 function chips(id,name,key){
   $(id).innerHTML=Object.entries(L).map(([k,v])=>`<label class="chip"><input type="radio" name="${name}" value="${k}"><span>${v.n}</span></label>`).join('');
-  $(id).onchange=e=>{S[key]=e.target.value;if(S.src===S.dst){const o=Object.keys(L).find(k=>k!==S[key]);const other=key==='src'?'dst':'src';S[other]=o;sync()}$('goT').textContent='Traduzir'};
+  $(id).onchange=e=>{S[key]=e.target.value;if(S.src===S.dst){const o=Object.keys(L).find(k=>k!==S[key]);const other=key==='src'?'dst':'src';S[other]=o;sync()}if(S.book)refreshNames();$('goT').textContent='Traduzir'};
 }
 function sync(){document.querySelectorAll('#gSrc input').forEach(i=>i.checked=i.value===S.src);document.querySelectorAll('#gDst input').forEach(i=>i.checked=i.value===S.dst)}
 chips('gSrc','src','src');chips('gDst','dst','dst');sync();
@@ -209,7 +204,7 @@ const SETS={
   pt:W('não uma os as do da dos das ele ela mas foi você está são também já seu sua mais pelo pela muito então quando'),
   es:W('el los las y del con pero sus fue este esta están también cuando muy más ya'),
   fr:W('le les des est une et qui dans pas sur avec elle vous nous mais ce aux était sont pour très'),
-  de:W('der die das und ist nicht ein eine mit den dem von auf für sich auch war ich sie es zu'),
+  de:W('der die das und ist nicht ein eine mit den dem von auf für sich auch war ich sie es zu dass aber wenn noch nur wie oder wurde hatte sein bei nach über im dann sagte schon wir ihr er'),
   it:W('il gli che di per non è sono ma come più anche suo sua del della nel')
 };
 function detectLang(t){
@@ -218,6 +213,7 @@ function detectLang(t){
   if(han>t.length*.1)return 'zh';
   const sc={};for(const k in SETS)sc[k]=0;
   for(const w of t.toLowerCase().match(/\p{L}+/gu)||[])for(const k in SETS)if(SETS[k].has(w))sc[k]++;
+  sc.de+=(t.match(/[äöüßÄÖÜ]/g)||[]).length*.3;   /* trema e ß ajudam a reconhecer o alemão */
   let best='en',n=0;for(const k in sc)if(sc[k]>n){n=sc[k];best=k}
   return best;
 }
@@ -257,21 +253,83 @@ function autoNames(chs){
   }
   return [...cap].filter(([w,n])=>n>=3&&n/(n+(low.get(w.toLowerCase())||0))>=.8).sort((a,b)=>b[1]-a[1]).slice(0,300).map(x=>x[0]);
 }
+
+/* ---- Nomes em ALEMÃO ----
+   No alemão TODO substantivo começa com maiúscula, então "maiúscula no meio da frase" não basta.
+   Sinais usados:
+   (1) nomes quase nunca vêm logo depois de artigo/pronome possessivo/demonstrativo (der, die, das, ein, mein, dieser...);
+       substantivos comuns vêm quase sempre.
+   (2) pronomes e palavras de função (Sie, Ihr, Ihnen, Er, Es, Man, Was...) e dias/meses são descartados.
+   (3) palavras com terminações típicas de substantivo (-ung, -heit, -keit, -schaft, -chen, -lein...) e uma lista de
+       substantivos muito comuns são descartadas.
+   (4) títulos (Herr, Frau, Fräulein, Doktor, Onkel...) antes da palavra são um forte indício de que é um nome.
+   (5) o genitivo (Peters) é unido ao nome base (Peter). */
+const DE_DET=W('der die das den dem des ein eine einen einem einer eines kein keine keinen keinem keiner keines mein meine meinen meinem meiner meines dein deine deinen deinem deiner sein seine seinen seinem seiner seines ihre ihren ihrem ihrer ihres unser unsere unseren unserem unserer euer eure diese dieser dieses diesen diesem jede jeder jedes jeden jedem alle allen aller viele vielen einige einigen manche mancher mehrere welche welcher welches am im zum zur vom beim ins ans aufs ums fürs durchs alte alten alter altes neue neuen neuer neues große großen großer großes kleine kleinen kleiner kleines gute guten guter gutes junge jungen junger lange langen langer ganze ganzen ganzer erste ersten erster letzte letzten letzter zwei drei vier fünf');
+const DE_TITLE=W('herr herrn frau fräulein fräulein doktor dr professor prof onkel tante graf gräfin baron baronin pater bruder schwester kapitän hauptmann oberst leutnant könig königin prinz prinzessin fürst herzog herzogin kaiser lord lady sir mister miss mrs mr monsieur madame opa oma papa mama');
+const DE_STOP=W('herr herrn frau fräulein doktor professor kapitel teil buch gott montag dienstag mittwoch donnerstag freitag samstag sonntag januar februar märz april mai juni juli august september oktober november dezember '+
+ 'sie ihr ihre ihren ihrem ihrer ihres ihnen ich du er es wir euch uns mir mich dir dich ihm ihn man dies dieser diese dieses diesen diesem das der die den dem des ein eine einen einem einer was wer wie wo wann warum wenn als und aber oder doch ja nein nun dann also denn weil dass obwohl während bevor nachdem damit sobald später schon noch nur auch immer nie nichts etwas alles jemand niemand jeder jede jedes sein seine ihre unsere eure '+
+ 'onkel tante graf gräfin baron baronin pater bruder schwester kapitän hauptmann oberst leutnant könig königin prinz prinzessin fürst herzog herzogin kaiser lord lady sir mister miss mrs mr monsieur madame opa oma papa mama');
+const DE_COMMON=W('zeit angst leute kinder kind mann männer frau frauen mutter vater eltern herr gott hand hände augen auge kopf tag tage nacht nächte welt leben mal uhr jahr jahre haus hause herz wasser geld brot hunger glück liebe tod krieg freund freunde zimmer tür weg stadt land licht schmerz schmerzen mut hilfe recht wort worte sache sachen ding dinge platz stelle seite seiten art weise grund fall frage fragen antwort moment augenblick stunde stunden minuten minute morgen abend mittag sonne mond himmel erde luft feuer wind regen schnee nebel wald baum bäume blume blumen tisch stuhl bett fenster boden wand dach straße straßen gasse hof garten feld berg tal fluss see meer ufer brücke schiff wagen pferd hund katze vogel tier tiere menschen mensch körper gesicht stimme blick lächeln tränen hals arm arme bein beine fuß füße finger herrn dame damen soldaten soldat polizei arzt lehrer schule buch bücher brief briefe papier geschichte geschichten gedanken gedanke gefühl gefühle traum träume ruhe stille dunkelheit hoffnung wahrheit lüge freiheit schuld sinn spaß ärger mühe lust sorge sorgen sicherheit gefahr plan pläne arbeit essen trinken wein bier kaffee tee milch fleisch obst kleidung kleider mantel hut schuhe tasche');
+const DE_SUF=/(ung|heit|keit|schaft|tät|ismus|chen|lein|ling|tum|ment|ion)$/;
+function autoNamesDE(chs){
+  const map=new Map();
+  for(const ch of chs)for(const it of ch.items){
+    if(it.k!=='p')continue;
+    let start=true,prev='';
+    for(const w of it.t.match(/[\p{L}'’-]+|[.!?…:;,]+/gu)||[]){
+      if(/^[.!?…:;,]+$/.test(w)){if(/[.!?…:]/.test(w))start=true;prev='';continue}
+      const raw=w.replace(/^['’-]+|['’-]+$/g,'');
+      if(!raw)continue;
+      const lw=raw.toLowerCase();
+      if(!start&&raw.length>=3&&/^\p{Lu}/u.test(raw)&&raw!==raw.toUpperCase()&&!CJKRE.test(raw)){
+        const k=raw.replace(/['’]s$/i,'');
+        let e=map.get(k);if(!e){e={n:0,det:0,title:0};map.set(k,e)}
+        e.n++;if(DE_DET.has(prev))e.det++;if(DE_TITLE.has(prev))e.title++;
+      }
+      start=false;prev=lw;
+    }
+  }
+  /* une o genitivo (Peters) ao nome base (Peter) */
+  for(const [k,e] of [...map]){
+    if(k.length>=4&&k.endsWith('s')&&map.has(k.slice(0,-1))){
+      const b=map.get(k.slice(0,-1));b.n+=e.n;b.det+=e.det;b.title+=e.title;map.delete(k);
+    }
+  }
+  return [...map].filter(([w,e])=>{
+    const lw=w.toLowerCase();
+    if(DE_STOP.has(lw)||DE_COMMON.has(lw)||DE_SUF.test(lw)||(lw.length>=7&&/nis$/.test(lw)))return false;
+    const r=e.det/e.n;
+    return (e.title>=1&&e.n>=2&&r<=.25)||(e.n>=4&&r<=.08);
+  }).sort((a,b)=>b[1].n-a[1].n).slice(0,300).map(x=>x[0]);
+}
+function refreshNames(){
+  if(!S.book)return;
+  S.auto=CJK.has(S.src)?[]:(S.src==='de'?autoNamesDE(S.book.chapters):autoNames(S.book.chapters));
+  $('nameHint').textContent=S.auto.length?`${S.auto.length} nome(s) recorrente(s) detectado(s) e protegido(s) automaticamente.`:'Nenhum nome recorrente detectado. Você pode listar os nomes acima.';
+}
 const parseNames=()=>$('names').value.split(/[,;\n]+/).map(s=>s.trim()).filter((s,i,a)=>s.length>=2&&a.indexOf(s)===i);
-/* Troca nomes por marcadores neutros antes de enviar e restaura depois (sem lookbehind: funciona em Safari antigo). */
-function guard(names){
+/* Troca nomes por marcadores neutros antes de enviar e restaura depois (sem lookbehind: funciona em Safari antigo).
+   No alemão, o genitivo "Peters Haus" vira "Haus von Peter" antes de traduzir (fica "casa de Peter" em português). */
+function guard(names,de){
   const ns=[...names].filter(Boolean).sort((a,b)=>b.length-a.length),idx=new Map(ns.map((n,i)=>[n,i]));
-  const re=ns.length?new RegExp('(^|[^\\p{L}\\p{N}])('+ns.map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')(?![\\p{L}\\p{N}])','gu'):null;
+  const alt=ns.map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),B='(^|[^\\p{L}\\p{N}])',E='(?![\\p{L}\\p{N}])';
+  const re=ns.length?new RegExp(B+'('+alt+')'+E,'gu'):null;
+  const gen=ns.length&&de?new RegExp(B+'('+alt+')s\\s+(\\p{Lu}\\p{L}+)'+E,'gu'):null;
+  const gen2=ns.length&&de?new RegExp(B+'('+alt+')s'+E,'gu'):null;
   return{
-    p:t=>re?t.replace(re,(m,a,n)=>a+'Zk'+idx.get(n)+'q'):t,
+    p:t=>{
+      if(!re)return t;
+      if(de){t=t.replace(gen,(m,a,n,x)=>a+x+' von Zk'+idx.get(n)+'q');t=t.replace(gen2,(m,a,n)=>a+'Zk'+idx.get(n)+'q')}
+      return t.replace(re,(m,a,n)=>a+'Zk'+idx.get(n)+'q');
+    },
     r:t=>t.replace(/Zk\s*(\d+)\s*q/gi,(m,i)=>ns[i]!==undefined?ns[i]:m)
   };
 }
 
 /* ---------- Arquivo ---------- */
 const drop=$('drop'),fileEl=$('file');
-/* O toque (e o teclado) na área é tratado pelo próprio <label>/<input>: o navegador abre o gerenciador
-   de arquivos sozinho, igual ao Juntador de PDFs. Aqui só tratamos o arrastar-e-soltar do computador. */
+/* O input de arquivo cobre o bloco inteiro (invisível): o toque abre o gerenciador de arquivos do aparelho.
+   Aqui só tratamos o arrastar-e-soltar do computador. */
 /* Copia o arquivo para a memória ANTES de limpar o campo: no Android o arquivo escolhido pode ficar ilegível depois. */
 fileEl.addEventListener('change',async()=>{
   const f=fileEl.files&&fileEl.files[0];if(!f)return;
@@ -283,8 +341,8 @@ fileEl.addEventListener('change',async()=>{
 ['dragenter','dragover'].forEach(v=>drop.addEventListener(v,e=>{e.preventDefault();drop.classList.add('drag')}));
 ['dragleave','drop'].forEach(v=>drop.addEventListener(v,e=>{e.preventDefault();drop.classList.remove('drag')}));
 drop.addEventListener('drop',e=>{const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)setFile(f)});
-function setDrop(ic,t,s,has){$('dropIcon').firstElementChild.setAttribute('href','#'+ic);$('dropT').textContent=t;$('dropS').textContent=s;drop.classList.toggle('has',!!has)}
-function reset(){S.pid++;S.imgs.forEach(i=>URL.revokeObjectURL(i.url));S.imgs=[];S.book=null;S.auto=[];S.pair='';setDrop('up','Toque para escolher o arquivo','EPUB ou PDF · no computador, você também pode arrastar',false);$('go').disabled=true;$('clr').disabled=true;$('goT').textContent='Traduzir';setStatus('')}
+function setDrop(t,s,has){$('dropT').textContent=t;$('dropS').textContent=s;drop.classList.toggle('has',!!has)}
+function reset(){S.pid++;S.imgs.forEach(i=>URL.revokeObjectURL(i.url));S.imgs=[];S.book=null;S.auto=[];S.pair='';setDrop('Toque para escolher o arquivo','EPUB ou PDF · no computador, você também pode arrastar',false);$('go').disabled=true;$('clr').disabled=true;$('goT').textContent='Traduzir';setStatus('')}
 $('clr').onclick=()=>{if(!S.busy)reset()};
 
 /* Descobre o tipo pelo nome, pelo MIME ou, se faltar extensão (comum no celular), pelo conteúdo */
@@ -297,7 +355,7 @@ async function fileKind(f){
 async function setFile(f){
   if(!f||S.busy)return;
   reset();const id=S.pid;S.fname=f.name||'livro';
-  $('clr').disabled=false;setDrop('file',S.fname,fmt(f.size)+' · analisando...',true);setStatus('Lendo o arquivo...');
+  $('clr').disabled=false;setDrop(S.fname,fmt(f.size)+' · analisando...',true);setStatus('Lendo o arquivo...');
   try{
     const kind=await fileKind(f);
     if(!kind)throw new Error('Formato não suportado. Envie um arquivo .epub ou .pdf.');
@@ -308,12 +366,11 @@ async function setFile(f){
     S.book=book;
     const sample=book.chapters.slice(0,6).flatMap(c=>c.items.filter(x=>x.k==='p').map(x=>x.t)).join(' ').slice(0,20000);
     S.src=detectLang(sample);if(S.dst===S.src)S.dst=Object.keys(L).find(k=>k!==S.src);sync();
-    S.auto=(CJK.has(S.src)||S.src==='de')?[]:autoNames(book.chapters);
+    refreshNames();
     const ni=S.imgs.length;
-    setDrop('file',S.fname,`${fmt(f.size)} · ${book.chapters.length} seções · ${np.toLocaleString('pt-BR')} parágrafos${ni?' · '+ni+' imagens':''}`,true);
-    $('nameHint').textContent=S.auto.length?`${S.auto.length} nome(s) recorrente(s) detectado(s) e protegido(s) automaticamente.`:'Nenhum nome recorrente detectado. Você pode listar os nomes acima.';
+    setDrop(S.fname,`${fmt(f.size)} · ${book.chapters.length} seções · ${np.toLocaleString('pt-BR')} parágrafos${ni?' · '+ni+' imagens':''}`,true);
     $('go').disabled=false;setStatus('');
-  }catch(err){if(id!==S.pid)return;console.error(err);setDrop('file',S.fname,fmt(f.size),true);setStatus('Erro: '+err.message,'err')}
+  }catch(err){if(id!==S.pid)return;console.error(err);setDrop(S.fname,fmt(f.size),true);setStatus('Erro: '+err.message,'err')}
 }
 
 /* ---------- Leitura de EPUB (texto + imagens em ordem) ---------- */
@@ -439,11 +496,12 @@ async function readPdf(f,id){
 }
 
 /* =====================================================================
-   MOTOR DE TRADUÇÃO (v3)
+   MOTOR DE TRADUÇÃO (v3.1)
    1) No início, TESTA cada serviço com uma frase real. Só os que responderem
       de verdade (e traduzirem de fato) entram na lista de uso.
-   2) A origem é sempre "auto" (o próprio serviço detecta o idioma de cada trecho),
-      então um livro com idioma mal detectado continua sendo traduzido.
+   2) Inglês: a origem é "auto". Outros idiomas (alemão, etc.): usa o idioma detectado
+      como origem (mais preciso em frases curtas); se o resultado vier sem tradução,
+      refaz com "auto" em outro serviço.
    3) Cada serviço tem pausa própria quando limita (429) e volta sozinho;
       serviços bloqueados/fora do ar são descartados na hora.
    4) Cada trecho é VERIFICADO. Se vier igual ao original ou ainda no idioma de
@@ -632,7 +690,7 @@ async function tBlock(texts,sl,tl,sig,onRate,g,avoid){
   if(!parts||parts.some(p=>!p)){if(texts.length>1)return halves();throw new Error('o tradutor devolveu uma resposta vazia')}
   return{parts,pid:res.pid};
 }
-/* Refaz UM trecho suspeito, sempre em um serviço diferente do anterior. Retorna a tradução ou null. */
+/* Refaz UM trecho suspeito, sempre em um serviço diferente do anterior (origem "auto"). Retorna a tradução ou null. */
 async function fixOne(text,tl,sig,onRate,g,pid){
   const avoid=new Set(pid?[pid]:[]);
   for(let k=0;k<3;k++){
@@ -693,10 +751,12 @@ $('go').onclick=async()=>{
   if(S.src===S.dst){setStatus('Escolha idiomas de origem e destino diferentes.','err');return}
   S.busy=true;S.lastErr='';S.keptN=0;
   const ctrl=S.ctrl=new AbortController(),sig=ctrl.signal,sp=speed(),tl=L[S.dst].tl,joiner=CJK.has(S.dst)?'':' ';
+  /* Inglês: origem "auto" (já está bom). Outros idiomas: usa o idioma detectado; se falhar, refaz em "auto". */
+  const sl0=S.src==='en'?'auto':L[S.src].tl;
   let wake=null,started=false,fatal=null;
   try{
     const names=[...new Set([...parseNames(),...S.auto])];S.used=names;S.speed=speedName();
-    const g=guard(names),pair=S.src+'>'+S.dst+'>'+names.join('|');
+    const g=guard(names,S.src==='de'),pair=S.src+'>'+S.dst+'>'+names.join('|');
     if(S.pair!==pair){wipe();S.pair=pair}
     S.pairLang={sl:S.src,tl:S.dst};
     $('bar').style.width='0%';$('pct').textContent='0%';$('eta').textContent='Verificando os serviços de tradução...';show('prog');
@@ -721,16 +781,16 @@ $('go').onclick=async()=>{
           if(w>=allowed){await sleep(300,sig);continue}
           const b=blocks[next++];
           try{
-            const r=await tBlock(b.map(u=>u.t),'auto',tl,sig,onRate,g,null);
+            const r=await tBlock(b.map(u=>u.t),sl0,tl,sig,onRate,g,null);
             for(let i=0;i<b.length;i++){
               const u=b[i];let out=r.parts[i];
               seen++;
               if(untranslated(u.t,out,S.src,S.dst)){
-                flag++;
                 const fx=await fixOne(u.t,tl,sig,onRate,g,r.pid);
                 if(fx!=null)out=fx;
                 else{
                   /* nenhum serviço conseguiu traduzir: tenta de novo na próxima rodada; só aceita depois de 2 rodadas */
+                  flag++;
                   u.it.tries=(u.it.tries||0)+1;
                   if(u.it.tries<2)continue;
                   if(same(u.t,out)){kept+=u.t.length;S.keptN++}
